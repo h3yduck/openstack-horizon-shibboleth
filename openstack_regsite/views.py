@@ -109,9 +109,37 @@ def _deprovision_hook(request):
                         username=eppn, entitlement=None)
                 return HttpResponse(username)
 
+def _get_circle_attrs(request):
+    idp = request.META.get('Shib-Identity-Provider')
+    domain = settings.OPENSTACK_CIRCLE_IDPS_MAPPING[idp]
+    neptun = request.META.get(settings.SHIBBOLETH_CIRCLE_NEPTUN_ATTRIBUTE)
+    email = request.META.get(settings.SHIBBOLETH_CIRCLE_EMAIL_ATTRIBUTE)
+    attendedCourses = request.META.get(settings.SHIBBOLETH_CIRCLE_ATTENDEDCOURSES_ATTRIBUTE, [])
+    heldCourses = request.META.get(settings.SHIBBOLETH_CIRCLE_HELDCOURSES_ATTRIBUTE, [])
 
-# The index page
-def index(request):
+    if type(attendedCourses) == str:
+        attendedCourses = attendedCourses.split(settings.SHIBBOLETH_CIRCLE_COURSE_DELIMITER)
+
+    if type(heldCourses) == str:
+        heldCourses = heldCourses.split(settings.SHIBBOLETH_CIRCLE_COURSE_DELIMITER)
+
+    return domain, neptun, email, attendedCourses, heldCourses
+
+def handleCircleSessionHook(request):
+    domain, neptun, email, attendedCourses, heldCourses = _get_circle_attrs(request)
+    next_page = request.GET.get('return', '/')
+
+    utils.update_circle_user(
+        domain,
+        neptun,
+        email,
+        attendedCourses,
+        heldCourses
+    )
+
+    return redirect(next_page)
+
+def handleNormalSessionHook(request):
     eppn, entitlement, email = _get_attrs(request)
 
     # If the eppn attribute is missing show an error
@@ -132,11 +160,17 @@ def index(request):
     else:
         return _show_user_creation_page(request)
 
+# The index page
+def index(request):
+    # if the current IdP is for CIRCLE module usage
+    if request.META.get('Shib-Identity-Provider', None) in settings.OPENSTACK_CIRCLE_IDPS_MAPPING.keys():
+        return handleCircleSessionHook(request)
+    else:
+        return handleNormalSessionHook(request)
 
 # This is the callback of shibboleth hook
 def shib_hook(request):
     return _update_user(request=request)
-
 
 # Deprpovisioning hook
 def deprovision(request):

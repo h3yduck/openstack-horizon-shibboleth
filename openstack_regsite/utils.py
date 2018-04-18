@@ -53,6 +53,13 @@ def admin_client():
     client = keystone_client.Client(session=sess)
     return client
 
+def get_domain(domain_name):
+    client = admin_client()
+    domains = client.domains.list()
+    for domain in domains:
+        if domain.name == domain_name:
+            return domain
+    return None
 
 # Search the user in keystone and return its object
 def get_user(username):
@@ -63,6 +70,13 @@ def get_user(username):
             return user
     return None
 
+def get_group(groupname):
+    client = admin_client()
+    grouplist = client.groups.list()
+    for group in grouplist:
+        if group.name == groupname:
+            return group
+    return None
 
 # Search the role object in keystone
 def get_role(name):
@@ -193,5 +207,45 @@ def update_user(username, entitlement, mail=None, password=None):
     update_roles(entitlement, user)
     if mail is not None:
         update_mail(user, mail)
+
+    return user.name
+
+def update_circle_user_courses(domain, user, courses):
+    client = admin_client()
+
+    for course in courses:
+        group = get_group(course)
+        if group is None:
+            group = client.groups.create(
+                name=course,
+                domain=domain,
+            )
+
+        client.users.add_to_group(user, group)
+
+def update_circle_user(domain_name, neptun, mail, attendedCourses, heldCourses):
+    user = get_user(neptun)
+    domain = get_domain(domain_name)
+
+    if user is None:
+        client = admin_client()
+        LOG.info("Creating CIRCLE user %s." % neptun)
+
+        project = client.projects.create(
+            name=neptun,
+            domain=domain,
+        )
+
+        user = client.users.create(
+            name=neptun,
+            domain=domain,
+            email=mail,
+            default_project=project.id,
+        )
+
+        role = get_role(settings.OPENSTACK_CIRCLE_USER_ROLE_NAME)
+        client.roles.grant(role, user=user, project=project)
+
+    update_circle_user_courses(domain, user, attendedCourses + heldCourses)
 
     return user.name
