@@ -223,6 +223,20 @@ def update_circle_user_courses(domain, user, courses):
 
         client.users.add_to_group(user, group)
 
+def update_circle_user_templates(user):
+    import requests
+    reqUrl = settings.CIRCLE_SESSIONHOOK_ENDPOINT
+    postHeaders = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+    }
+    payload = {
+        "secret": settings.SESSIONHOOK_SECRET,
+        "project_id": user.default_project_id,
+        "user_id": user.id,
+    }
+    session = requests.Session()
+    session.post(reqUrl, data=payload, headers=postHeaders)
+
 def update_circle_user(domain_name, neptun, mail, attendedCourses, heldCourses):
     user = get_user(neptun)
     domain = get_domain(domain_name)
@@ -247,5 +261,6 @@ def update_circle_user(domain_name, neptun, mail, attendedCourses, heldCourses):
         client.roles.grant(role, user=user, project=project)
 
     update_circle_user_courses(domain, user, attendedCourses + heldCourses)
+    update_circle_user_templates(user)
 
     return user.name

@@ -136,6 +136,9 @@ SHIBBOLETH_CIRCLE_ATTENDEDCOURSES_ATTRIBUTE = 'niifEduPersonAttendedCourse'
 SHIBBOLETH_CIRCLE_HELDCOURSES_ATTRIBUTE = 'niifEduPersonHeldCourse'
 SHIBBOLETH_CIRCLE_COURSE_DELIMITER = ';'
 
+SESSIONHOOK_SECRET = "verysecretmuchsecure"
+CIRCLE_SESSIONHOOK_ENDPOINT = "http://172.29.238.197/dashboard/sessionhook"
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
